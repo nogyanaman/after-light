@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>After Light — nothing here is invented.</title>
+<meta name="description" content="After Light renders live Wikipedia dispatches as photorealistic fireworks in an open 3D void. Nothing here is invented.">
+<meta name="theme-color" content="#04050A">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2304050A'/%3E%3Ccircle cx='16' cy='16' r='7' fill='none' stroke='%235B6CFF' stroke-width='1.4'/%3E%3Ccircle cx='16' cy='16' r='2.2' fill='%23FFFDF8'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="canonical" href="https://example.com/after-light/">
+
+<style>
+/* ══════════════════════════════════════════════════════════════════════════
+   INLINE CRITICAL CSS — everything needed to paint Stage 1 with zero network
+   round-trips. The full stylesheet (styles.css) loads after first paint.
+   ══════════════════════════════════════════════════════════════════════════ */
+:root{
+  --void:#06070C; --abyss:#06070C; --obsidian:#0A0C14;
+  --hazeline:#101830; --fresnel:#1B2450;
+  --titanium:#9AA6B8; --dim:#7A828F; --evidence:#565D68;
+  --flash:#F7F9FF; --bone:#F1F3F7;
+  --ember:#5B6CFF; --ember-deep:#2A3199;
+  --carmine:#FF5C4D; --carmine-deep:#8E2A22;
+  --celadon:#D8F3E9; --celadon-mid:#A8C3BA; --celadon-dim:#6E8C86;
+  --violet:#B98CFF; --violet-deep:#2B2058;
+  --sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--void);color:var(--titanium);
+  font-family:var(--sans);-webkit-font-smoothing:antialiased;
+  overscroll-behavior:none}
+body{overflow:hidden}
+#loader-threshold{
+  position:fixed;inset:0;z-index:900;background:transparent;
+  display:flex;flex-direction:column;justify-content:flex-end;
+  padding:clamp(20px,4vw,56px);will-change:opacity}
+canvas#sky{position:fixed;inset:0;width:100%;height:100%;display:block;z-index:0;
+  opacity:0;transition:opacity 2.2s cubic-bezier(.22,.61,.36,1)}
+canvas#sky.is-lit{opacity:1}
+</style>
+
+<link rel="preload" href="./styles.css" as="style" onload="this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="./styles.css"></noscript>
+<link rel="preload" href="./vendor/three.module.js" as="script" crossorigin>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.js", "three/addons/": "./vendor/addons/" } }
+</script>
+
+<link rel="modulepreload" href="./js/main.js">
+<link rel="modulepreload" href="./js/loader.js">
+<link rel="modulepreload" href="./js/tokens.js">
+<link rel="modulepreload" href="./js/archetypes.js">
+<link rel="modulepreload" href="./js/stage.js">
+<link rel="modulepreload" href="./js/fireworks.js">
+<link rel="modulepreload" href="./js/audio.js">
+<link rel="modulepreload" href="./js/wikipedia.js">
+<link rel="modulepreload" href="./js/patterns.js">
+<link rel="modulepreload" href="./js/scenes.js">
+<link rel="modulepreload" href="./js/callouts.js">
+<link rel="modulepreload" href="./js/news-fx.js">
+<link rel="modulepreload" href="./fireworks.js">
+</head>
+
+<body>
+<!-- ═══ STAGE 1 · THE THRESHOLD — first element in body, paints immediately ══ -->
+<div id="loader-threshold" role="status" aria-live="polite" aria-label="Initialising After Light">
+  <div class="lt-grid" aria-hidden="true"></div>
+  <canvas class="lt-field" id="lt-field" width="0" height="0" aria-hidden="true"></canvas>
+
+  <!-- perimeter observatory index & scale rails (vanish on ignition) -->
+  <div class="lt-rails" aria-hidden="true">
+    <span class="lt-rail-top">N · 000° ZENITH</span>
+    <div class="lt-rail-left">
+      <div class="lt-scale"><span>+60°</span><span>+30°</span><span>00°</span></div>
+      <span class="lt-rail-tag">STAGE 01 / 04 · THRESHOLD</span>
+    </div>
+    <div class="lt-rail-right">
+      <span class="lt-rail-tag">343 M/S · ACOUSTIC DELAY</span>
+    </div>
+  </div>
+
+  <!-- upper-left sky wordmark (no symbol) · right flank: system checks -->
+  <div class="lt-head">
+    <h1 class="lt-mark" aria-label="After Light">
+      <span class="lt-line"><span class="lt-title">AFTER LIGHT</span></span>
+    </h1>
+    <p class="lt-sub">Nothing here is invented.</p>
+    <p class="lt-live" id="lt-live" aria-hidden="true"><i class="lt-caret"></i></p>
+  </div>
+
+  <!-- right sky flank: unboxed astronomical crescent checks -->
+  <div class="lt-checks" aria-hidden="true">
+    <div class="lt-checks-head">
+      <span class="lt-checks-label">SYSTEM CHECKS </span>
+      <span class="lt-checks-count" id="lt-checks-count">0 / 6</span>
+    </div>
+    <div class="lt-arc-stage">
+      <svg class="lt-arc" viewBox="0 0 48 168" preserveAspectRatio="none" aria-hidden="true">
+        <path class="lt-arc-track" vector-effect="non-scaling-stroke" d="M 36 8 C 8 44, 8 124, 36 160"></path>
+        <path class="lt-arc-fill" id="lt-arc-fill" vector-effect="non-scaling-stroke" d="M 36 8 C 8 44, 8 124, 36 160"></path>
+      </svg>
+      <ol class="lt-log" id="lt-log"></ol>
+    </div>
+  </div>
+
+  <div class="lt-body" aria-hidden="true"></div>
+
+  <!-- bottom-left: "working" + wide live appearing feed -->
+  <div class="lt-corner lt-status" aria-hidden="true">
+    <span class="lt-status-label"><i class="lt-live-dot"></i>working</span>
+    <ul class="lt-feed" id="lt-feed"></ul>
+  </div>
+
+  <!-- bottom-right column: compact observatory tucked cleanly above the wide processing line -->
+  <div class="lt-foot-col">
+    <div class="lt-meta" id="lt-meta" aria-hidden="true">
+      <div class="lt-meta-head">[ 00 · OBSERVATORY ]</div>
+      <dl class="lt-meta-list">
+        <div><dt>UTC</dt><dd id="lt-meta-utc">--:--:--</dd></div>
+        <div><dt>VIEW</dt><dd id="lt-meta-view">+00° AZ</dd></div>
+        <div><dt>VEC</dt><dd id="lt-meta-vec">00.0° EL</dd></div>
+      </dl>
+    </div>
+
+    <div class="lt-foot">
+      <div class="lt-progress"><i id="lt-bar"></i></div>
+      <div class="lt-foot-row">
+        <div class="lt-boot" id="lt-boot">SEQ-···· · initializing</div>
+        <div class="lt-actions">
+          <button id="lt-skip" class="lt-btn" type="button">SKIP <span class="lt-k">ESC</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p id="lt-ignite-hint" class="lt-hint">
+    <span class="lt-hint-dot"></span>CLICK ANYWHERE TO ENTER
+  </p>
+
+  <div id="lt-aim" class="lt-aim" aria-hidden="true">
+    <span class="lt-aim-name" id="lt-aim-name"></span>
+  </div>
+</div>
+
+<!-- ═══ STAGE 2 · THE DESCENT — 400vh pinned scroll track (no skip button, no big bar) ═══ -->
+<div id="intro-track" aria-hidden="false">
+  <div id="intro-pin">
+    <div class="ic-frame" aria-hidden="true"></div>
+
+    <div class="ic-rail" aria-label="Scroll chapters">
+      <div class="ic-pips">
+        <button class="ic-pip is-on" data-chapter="0" type="button">01</button>
+        <button class="ic-pip" data-chapter="1" type="button">02</button>
+        <button class="ic-pip" data-chapter="2" type="button">03</button>
+        <button class="ic-pip" data-chapter="3" type="button">04</button>
+      </div>
+    </div>
+
+    <div id="intro-caption">
+      <p class="ic-step" data-step="0"><b>01 · THE RECORD</b><span class="ic-mask"><span class="ic-txt">The world records every tragedy in real time.</span></span></p>
+      <p class="ic-step" data-step="1"><b>02 · THE PLATES</b><span class="ic-mask"><span class="ic-txt">It forgets to count the miracles happening at the exact same second.</span></span></p>
+      <p class="ic-step" data-step="2"><b>03 · THE BREAK</b><span class="ic-mask"><span class="ic-txt">Here, every dark headline ignites a louder light.</span></span></p>
+      <p class="ic-step" data-step="3"><b>04 · THE SKY</b><span class="ic-mask"><span class="ic-txt">“Only in the darkness can you see the stars.”</span></span><span class="ic-note">— MARTIN LUTHER KING JR.</span></p>
+    </div>
+
+    <div id="intro-hint" class="ic-hint"><span>SCROLL</span><i></i></div>
+  </div>
+</div>
+
+<!-- ═══ THE SKY ═════════════════════════════════════════════════════════════ -->
+<canvas id="sky" aria-label="Three-dimensional sky of fireworks in an open void"></canvas>
+<canvas id="scene-bg" aria-hidden="true" width="0" height="0"></canvas>
+
+<!-- callout cards (editorial layer, 2D force-relaxed) -->
+<div id="callouts" aria-live="off"></div>
+
+<!-- the veil: used only if skipping directly -->
+<div id="veil" aria-hidden="true"></div>
+
+<!-- ═══ STAGE 3 · HUD ═══════════════════════════════════════════════════════ -->
+<div id="hud" aria-hidden="false">
+  <div class="hud-frame" aria-hidden="true"></div>
+
+  <div class="hud-el hud-fps" id="hud-fps">
+    <span class="hud-logo">AFTER LIGHT</span>
+    <div class="hud-fps-row" aria-label="Live frame rate">
+      <span id="fps-num">60</span><span class="hud-unit">FPS</span>
+      <i class="fps-spark" id="fps-spark" aria-hidden="true"></i>
+    </div>
+  </div>
+
+  <div class="hud-el hud-cam" id="hud-cam">
+    <div class="cam-slider" id="cam-slider" data-mode="AUTO" role="radiogroup" aria-label="Camera angle">
+      <i class="cam-thumb" id="cam-thumb" aria-hidden="true"></i>
+      <button class="cam-opt" data-mode="WIDE" type="button" role="radio" aria-checked="false">
+        <b>WIDE HORIZON</b>
+      </button>
+      <button class="cam-opt" data-mode="DRONE" type="button" role="radio" aria-checked="false">
+        <b>AERIAL DRONE ORBIT</b>
+      </button>
+      <button class="cam-opt is-on" data-mode="AUTO" type="button" role="radio" aria-checked="true">
+        <b>AUTO FLY TO BURST</b>
+      </button>
+    </div>
+    <p class="cam-caption" id="cam-caption" aria-live="polite">ride the next break</p>
+  </div>
+
+  <div class="hud-el hud-top-right">
+    <button id="sound-btn" type="button" aria-pressed="true" aria-label="Mute or unmute the sky">
+      <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">
+        <path d="M4 9h3l4.5-3.6v13.2L7 15H4z"/><g id="snd-waves" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+        <path d="M15.4 8.6a4.7 4.7 0 0 1 0 6.8"/><path d="M17.9 6.3a8 8 0 0 1 0 11.4"/></g>
+        <g id="snd-mute" style="display:none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+        <path d="M15.5 9.5l5 5"/><path d="M20.5 9.5l-5 5"/></g>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Bottom-right: Firework processing line + DISPATCHES -->
+  <div class="hud-el hud-bottom-right">
+    <div class="hud-foot-bar">
+      <div class="hud-foot-line"><i id="hud-pulse-bar"></i></div>
+      <div class="hud-foot-row">
+        <div class="hud-seq" id="hud-seq">FW-01 · STANDBY · MORTAR READY</div>
+        <button id="drawer-btn" type="button" aria-expanded="false" aria-controls="drawer">
+          <span class="dot-live" id="dot-live"></span>DISPATCHES
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ DISPATCHES DRAWER ═══════════════════════════════════════════════════ -->
+<aside id="drawer" class="drawer" aria-hidden="true" aria-label="Dispatches">
+  <header class="dr-head">
+    <h2>DISPATCHES</h2>
+    <button class="dr-close" id="dr-close" type="button" aria-label="Close dispatches">ESC</button>
+  </header>
+
+  <nav class="dr-lenses" id="dr-lenses" aria-label="Filter by human impact">
+    <button class="lens is-on" data-lens="ALL" type="button">ALL</button>
+    <button class="lens" data-lens="CONFLICT & FRONTLINES" type="button">CONFLICT &amp; FRONTLINES</button>
+    <button class="lens" data-lens="EARTH & CATACLYSM" type="button">EARTH &amp; CATACLYSM</button>
+    <button class="lens" data-lens="SUDDEN TRAGEDY" type="button">SUDDEN TRAGEDY</button>
+    <button class="lens" data-lens="NOTABLE PASSINGS" type="button">NOTABLE PASSINGS</button>
+  </nav>
+
+  <section class="dr-live">
+    <h3>LIVE SKY LOG <span class="dr-note">fired in the last 26 seconds</span></h3>
+    <ul id="live-list" class="dr-list"></ul>
+    <p class="dr-empty" id="live-empty">The sky is quiet. That is allowed.</p>
+  </section>
+
+  <section class="dr-archive">
+    <h3>WORLD ARCHIVE <span class="dr-note" id="archive-note">cached</span></h3>
+    <ul id="archive-list" class="dr-list"></ul>
+  </section>
+
+  <footer class="dr-foot">
+    <span id="sync-note">last sync —</span>
+    <span class="dr-cc">Wikipedia · CC BY-SA 4.0 / CC0</span>
+  </footer>
+</aside>
+
+<!-- ═══ MANIFESTO MODAL ═════════════════════════════════════════════════════ -->
+<div id="manifesto" class="modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="mf-title">
+  <div class="mf-card">
+    <button class="dr-close" id="mf-close" type="button" aria-label="Close manifesto">ESC</button>
+    <h2 id="mf-title">MANIFESTO</h2>
+    <p class="mf-kicker">AFTER LIGHT</p>
+    <div class="mf-body">
+      <p class="mf-lead">Real stories. Brief light. No measure of grief.</p>
+      <p>AFTER LIGHT is an interactive 3D space for encountering real, source-linked dispatches about conflict,
+         catastrophe, sudden loss, and lives remembered. Each dispatch appears as a headline and a sourced sentence,
+         then enters the sky as a brief firework. The visual is an interpretation; the event and its facts remain with the source.</p>
+      <p><b>A space designed for attention.</b> The journey begins among 57 real star patterns and descends into an open void:
+         no floor, horizon, or mirror. Visitors can orbit, draw closer, or travel toward a burst. Depth, motion, and sound invite
+         exploration without flattening the news into a feed.</p>
+      <p><b>A visual language of transience.</b> A firework rises, opens, and fades. Its light creates a pause—not an explanation,
+         decoration, or unit for grief. When the burst ends, the story remains one click away.</p>
+      <p><b>Every shell is a configuration, not a special effect.</b> Sixty-two documented archetypes shape each burst’s form,
+         colour, motion, and sound. Each is defined by calibre, emitter chemistry, star count, burn time, drag, and break asymmetry;
+         reference image, video, or audio can be added without changing the rendering code. One dispatch, one shell. Up to 100,000 particle slots.</p>
+      <p><b>The boundaries are part of the design.</b> No casualty counters, maps, coordinates, rankings of suffering, invented stories,
+         or sensationalized summaries. No Day / Week / Month tabs: tragedy is not a period filter. The only number in the sky is frame rate,
+         a measure of the machine—not the world. Every burst leads back to its original Wikipedia article.</p>
+      <p><b>Grief and hope can coexist.</b> Care, courage, and persistence do not erase loss; loss does not erase the people who keep going.
+         This experience makes room for both without claiming to resolve either.</p>
+      <p class="mf-ethic">Reduce motion. Adjust the volume. Pause the sky. Explore, then return to the account behind the light.</p>
+    </div>
+
+    <div class="mf-ctrls">
+      <label class="mf-row"><span>MASTER VOLUME</span>
+        <input id="mf-vol" type="range" min="0" max="100" value="78" aria-label="Master volume"></label>
+      <label class="mf-row"><span>REDUCED MOTION · LANTERN</span>
+        <input id="mf-rm" type="checkbox" aria-label="Reduced motion lantern mode"></label>
+      <label class="mf-row"><span>PAUSE THE SKY</span>
+        <input id="mf-pause" type="checkbox" aria-label="Pause the sky"></label>
+    </div>
+
+    <div class="mf-foot">
+      <p class="mf-attr">Dispatches from Wikipedia, licensed <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener">CC BY-SA 4.0</a>;
+         code and data released under <a href="https://creativecommons.org/publicdomain/zero/1.0/" target="_blank" rel="noopener">CC0</a>.
+         Reused text is attributed to its authors; no endorsement is implied.
+         Music: <a href="https://www.scottbuckley.com.au/library/adrift-among-infinite-stars/" target="_blank" rel="noopener">“Adrift Among Infinite Stars”</a> by Scott Buckley,
+         licensed <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a> (opening silence trimmed).
+         Three.js r170, MIT. Built for the open web.</p>
+      <p class="mf-creator">Built by <a id="mf-linkedin" href="https://www.linkedin.com/in/naman-nogya/" target="_blank" rel="noopener">the creator</a> ·
+         <span id="mf-ver">AFTER LIGHT</span></p>
+    </div>
+  </div>
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script type="module" src="./js/main.js"></script>
+<div id="grain" aria-hidden="true"></div>
+</body>
+</html>
